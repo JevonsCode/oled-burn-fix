@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang='zh'>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1.0'>
+<title>OLED 烧屏修复</title>
+<style>
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#000;color:#fff;font-family:sans-serif;}
+#display{width:100%;height:100%;transition:background-color 0.1s;}
+#controls{position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.6);padding:12px;border-radius:8px;z-index:10;}
+#controls label{display:block;margin-top:6px;font-size:14px;}
+#controls button{margin-right:5px;}
+</style>
+</head>
+<body>
+<div id='display'></div>
+<div id='controls'>
+<button id='start'>开始</button>
+<button id='stop' disabled>停止</button>
+<button id='fs'>全屏</button>
+<label>速度: <span id='speedVal'>500</span>ms
+<input type='range' id='speed' min='100' max='2000' step='100' value='500'>
+</label>
+</div>
+<script>
+const colors=['#ff0000','#00ff00','#0000ff','#ffffff','#000000','#ffff00','#ff00ff','#00ffff'];
+let timer=null,index=0;
+const display=document.getElementById('display');
+const startBtn=document.getElementById('start');
+const stopBtn=document.getElementById('stop');
+const fsBtn=document.getElementById('fs');
+const speedInput=document.getElementById('speed');
+const speedVal=document.getElementById('speedVal');
+function nextColor(){
+  const c=colors[index%colors.length];
+  index++;
+  return c;
+}
+function start(){
+  clearInterval(timer);
+  index=0;
+  timer=setInterval(()=>{display.style.backgroundColor=nextColor();},parseInt(speedInput.value));
+  startBtn.disabled=true;
+  stopBtn.disabled=false;
+}
+function stop(){
+  clearInterval(timer);
+  timer=null;
+  startBtn.disabled=false;
+  stopBtn.disabled=true;
+}
+startBtn.onclick=start;
+stopBtn.onclick=stop;
+fsBtn.onclick=()=>{
+  if(!document.fullscreenElement){document.documentElement.requestFullscreen();}
+  else{document.exitFullscreen();}
+};
+speedInput.oninput=()=>{
+  speedVal.textContent=speedInput.value;
+  if(timer) start();
+};
+</script>
+</body>
+</html>
