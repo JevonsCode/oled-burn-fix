@@ -39,6 +39,19 @@
     #controls button{
       margin-right:5px;
     }
+
+    /* 下拉框样式，确保在深色背景上可见 */
+    #controls select{
+      background: #222;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 4px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+    #controls option{
+      color: #000;
+    }
   </style>
 </head>
 <body>
@@ -58,11 +71,13 @@
         <option value="hue">彩虹渐变</option>
         <option value="noise">随机噪点</option>
         <option value="bars">移动条纹</option>
+        <option value="circles">彩色圆</option>
       </select>
     </label>
   </div>
   <script>
     (function(){
+      // 预设颜色序列，包含更多丰富的颜色
       // 预设颜色序列，包含更加丰富的颜色组合，取自色环每隔30°的色调，覆盖红、橙、黄、绿、青、蓝、紫等，另外包含黑白和几种过渡色，可模仿修复视频中的不同色彩闪烁效果
       const preset=[
         '#ff0000', // 红
@@ -149,8 +164,22 @@
             ctx.fillStyle=nextColor();
             ctx.fillRect(x,0,barWidth/2,h);
           }
+        } else if(mode==='circles'){
+          // 多彩圆：随机位置和半径的圆形，使用 nextColor() 生成颜色
+          ctx.fillStyle='#000';
+          ctx.fillRect(0,0,w,h);
+          const count=Math.floor((w*h)/50000); // 根据画布大小调整圆的数量
+          for(let i=0;i<count;i++){
+            const radius=Math.random()*60+20;
+            const x=Math.random()*w;
+            const y=Math.random()*h;
+            ctx.beginPath();
+            ctx.arc(x,y,radius,0,Math.PI*2);
+            ctx.fillStyle=nextColor();
+            ctx.fill();
+          }
         } else {
-          // 单一颜色填充
+          // 单一颜色填充（默认模式）
           ctx.fillStyle=nextColor();
           ctx.fillRect(0,0,w,h);
         }
