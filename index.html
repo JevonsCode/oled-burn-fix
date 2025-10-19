@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>OLED 烧屏修复工具</title>
+  <title>OLED 烁屏修复工具</title>
   <style>
     html,body{
       margin:0;
@@ -30,6 +30,8 @@
       background:rgba(0,0,0,0.6);
       padding:12px;
       border-radius:8px;
+      /* 添加淡入淡出动画，用于自动隐藏 */
+      transition:opacity 0.5s ease;
     }
     #controls label{
       display:block;
@@ -50,7 +52,8 @@
       margin-top: 4px;
     }
     #controls option{
-      color: #000;
+      /* 设置选项文字为白色，避免黑底黑字看不见 */
+      color: #fff;
     }
   </style>
 </head>
@@ -72,6 +75,7 @@
         <option value="noise">随机噪点</option>
         <option value="bars">移动条纹</option>
         <option value="circles">彩色圆</option>
+        <option value="randomAll">全随机</option>
       </select>
     </label>
   </div>
@@ -120,22 +124,43 @@
       }
       window.addEventListener('resize',resize);
       resize();
-      // 根据模式返回下一个颜色
+      // 根据模式返回下一颜色
       function nextColor(){
         const mode=modeSelect.value;
         if(mode==='preset'){
+          // 从预设颜色序列中依次取出颜色
           const c=preset[index % preset.length];
           index++;
           return c;
         } else if(mode==='random'){
+          // 随机生成一个 RGB 颜色
           const r=Math.floor(Math.random()*256);
           const g=Math.floor(Math.random()*256);
           const b=Math.floor(Math.random()*256);
           return 'rgb('+r+','+g+','+b+')';
         } else if(mode==='hue'){
+          // 按色相环渐变
           hue=(hue+5)%360;
           return 'hsl('+hue+',100%,50%)';
+        } else if(mode==='randomAll'){
+          // 在全随机模式下，随机选择颜色生成方式
+          const colorModes=['preset','random','hue'];
+          const cm=colorModes[Math.floor(Math.random()*colorModes.length)];
+          if(cm==='preset'){
+            const c=preset[index % preset.length];
+            index++;
+            return c;
+          } else if(cm==='random'){
+            const r=Math.floor(Math.random()*256);
+            const g=Math.floor(Math.random()*256);
+            const b=Math.floor(Math.random()*256);
+            return 'rgb('+r+','+g+','+b+')';
+          } else {
+            hue=(hue+5)%360;
+            return 'hsl('+hue+',100%,50%)';
+          }
         }
+        // 默认返回黑色
         return '#000000';
       }
       // 绘制下一帧
@@ -165,10 +190,10 @@
             ctx.fillRect(x,0,barWidth/2,h);
           }
         } else if(mode==='circles'){
-          // 多彩圆：随机位置和半径的圆形，使用 nextColor() 生成颜色
+          // 多彩圈：随机位置和半径的圈形，使用 nextColor() 生成颜色
           ctx.fillStyle='#000';
           ctx.fillRect(0,0,w,h);
-          const count=Math.floor((w*h)/50000); // 根据画布大小调整圆的数量
+          const count=Math.floor((w*h)/50000); // 根据画布大小调整圈的数量
           for(let i=0;i<count;i++){
             const radius=Math.random()*60+20;
             const x=Math.random()*w;
@@ -177,6 +202,47 @@
             ctx.arc(x,y,radius,0,Math.PI*2);
             ctx.fillStyle=nextColor();
             ctx.fill();
+          }
+        } else if (mode==='randomAll'){
+          // 全随机模式：每帧随机选择一种模式来绘制
+          const modes=['preset','random','hue','noise','bars','circles'];
+          const rnd=modes[Math.floor(Math.random()*modes.length)];
+          if(rnd==='noise'){
+            const imgData=ctx.createImageData(w,h);
+            const data=imgData.data;
+            for(let i=0;i<data.length;i+=4){
+              data[i]=Math.random()*255;
+              data[i+1]=Math.random()*255;
+              data[i+2]=Math.random()*255;
+              data[i+3]=255;
+            }
+            ctx.putImageData(imgData,0,0);
+          } else if(rnd==='bars'){
+            const barWidth=100;
+            barOffset=(barOffset+10)%barWidth;
+            ctx.fillStyle='#000';
+            ctx.fillRect(0,0,w,h);
+            for(let x=-barWidth+barOffset;x<w;x+=barWidth){
+              ctx.fillStyle=nextColor();
+              ctx.fillRect(x,0,barWidth/2,h);
+            }
+          } else if(rnd==='circles'){
+            ctx.fillStyle='#000';
+            ctx.fillRect(0,0,w,h);
+            const count=Math.floor((w*h)/50000);
+            for(let i=0;i<count;i++){
+              const radius=Math.random()*60+20;
+              const x=Math.random()*w;
+              const y=Math.random()*h;
+              ctx.beginPath();
+              ctx.arc(x,y,radius,0,Math.PI*2);
+              ctx.fillStyle=nextColor();
+              ctx.fill();
+            }
+          } else {
+            // preset/random/hue 模式下，直接使用 nextColor() 填充整屏
+            ctx.fillStyle=nextColor();
+            ctx.fillRect(0,0,w,h);
           }
         } else {
           // 单一颜色填充（默认模式）
@@ -203,7 +269,7 @@
         startBtn.disabled=false;
         stopBtn.disabled=true;
       }
-      // 绑定事件
+      // 线合事件
       startBtn.addEventListener('click',start);
       stopBtn.addEventListener('click',stop);
       fsBtn.addEventListener('click',()=>{
@@ -225,6 +291,25 @@
         hue=0;
         barOffset=0;
       });
+
+      // 自动隐藏控制面板：若鼠标或触摸在3秒内没有移动，则隐藏控制栏
+      const controls = document.getElementById('controls');
+      let hideTimer;
+      function resetHideTimer(){
+        // 显示控制栏
+        controls.style.opacity = '1';
+        controls.style.pointerEvents = 'auto';
+        if(hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+          controls.style.opacity = '0';
+          controls.style.pointerEvents = 'none';
+        }, 3000);
+      }
+      // 监听鼠标移动和触摸事件
+      document.addEventListener('mousemove', resetHideTimer);
+      document.addEventListener('touchstart', resetHideTimer);
+      // 初始启动定时器
+      resetHideTimer();
     })();
   </script>
 </body>
